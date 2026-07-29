@@ -1,4 +1,4 @@
-const CACHE_NAME = "4ta-shell-v2";
+const CACHE_NAME = "4ta-shell-v3";
 const APP_SHELL = [
   "./",
   "./manifest.webmanifest",
@@ -43,9 +43,11 @@ self.addEventListener("push", (event) => {
     body: payload.body || "Ta 给你发来了一条消息",
     icon: "./icons/icon-192.png",
     badge: "./icons/icon-192.png",
-    tag: payload.tag || "4ta-message",
-    renotify: true,
-    data: { url: payload.url || "./#/chat" },
+    timestamp: payload.sentAt ? new Date(payload.sentAt).getTime() : Date.now(),
+    data: {
+      url: payload.url || "./#/chat",
+      notificationId: payload.notificationId || "",
+    },
   };
   event.waitUntil(self.registration.showNotification(title, options));
 });
