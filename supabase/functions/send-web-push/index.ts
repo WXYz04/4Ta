@@ -45,16 +45,16 @@ function taipeiClock(date = new Date()) {
 
 function activePushPeriod(date = new Date()) {
   const clock = taipeiClock(date);
-  if (clock.minutes >= 15 && clock.minutes <= 150) {
+  if (clock.minutes >= 0 && clock.minutes <= 180) {
     return { key: `${clock.date}:night`, targetMin: 2, targetMax: 3 };
   }
-  if (clock.minutes >= 420 && clock.minutes <= 570) {
+  if (clock.minutes >= 390 && clock.minutes <= 630) {
     return { key: `${clock.date}:morning`, targetMin: 2, targetMax: 4 };
   }
   return null;
 }
 
-async function userContext(userId: string) {
+async function userContext(userId: string, preferredTaId?: string) {
   const { data } = await admin
     .from("app_records")
     .select("record_key,payload")
@@ -72,8 +72,21 @@ async function userContext(userId: string) {
     record.record_key,
     typeof record.payload?.value === "string" ? record.payload.value : "",
   ]));
+  let profiles: Array<Record<string, unknown>> = [];
+  try {
+    const parsed = JSON.parse(values.get("4ta:ta-profiles") || "[]");
+    if (Array.isArray(parsed)) profiles = parsed;
+  } catch {
+    profiles = [];
+  }
   const activeTaId = values.get("4ta:active-ta-id") || "main";
-  const messageKey = `4ta:chat-messages:${activeTaId}`;
+  const eligibleProfiles = profiles.filter((profile) => profile.pushEnabled !== false && typeof profile.id === "string");
+  const rotationIndex = Math.floor(Date.now() / (30 * 60_000)) % Math.max(1, eligibleProfiles.length);
+  const chosenProfile = eligibleProfiles.find((profile) => profile.id === preferredTaId)
+    || eligibleProfiles[rotationIndex]
+    || profiles.find((profile) => profile.id === activeTaId);
+  const selectedTaId = String(chosenProfile?.id || activeTaId);
+  const messageKey = `4ta:chat-messages:${selectedTaId}`;
   const { data: scopedMessageRecord } = await admin
     .from("app_records")
     .select("payload")
@@ -91,11 +104,13 @@ async function userContext(userId: string) {
     messages = [];
   }
   return {
-    activeTaId,
+    activeTaId: selectedTaId,
     messageKey,
-    taName: values.get("4ta:ta-name") || "Ta",
-    taStyle: values.get("4ta:ta-style") || "",
-    relationship: values.get("4ta:ta-relationship") || "",
+    taName: String(chosenProfile?.name || values.get("4ta:ta-name") || "Ta"),
+    taStyle: String(chosenProfile?.personality || chosenProfile?.style || values.get("4ta:ta-style") || ""),
+    speechStyle: String(chosenProfile?.speechStyle || ""),
+    relationship: String(chosenProfile?.relationship || values.get("4ta:ta-relationship") || ""),
+    pushAllowed: profiles.length === 0 || eligibleProfiles.length > 0,
     messages,
   };
 }
@@ -105,8 +120,9 @@ async function persistPushMessage(
   notificationId: string,
   sentAt: string,
   payload: { title: string; body: string },
+  taId?: string,
 ) {
-  const context = await userContext(userId);
+  const context = await userContext(userId, taId);
   if (context.messages.some((message) => message.id === notificationId)) return;
   const message = {
     id: notificationId,
@@ -162,6 +178,7 @@ async function persistPushMessage(
 
 async function generateBody(userId: string) {
   const context = await userContext(userId);
+  if (!context.pushAllowed) return null;
   const last = context.messages.at(-1);
   const clock = taipeiClock();
   const deepNight = clock.minutes < 180;
@@ -174,7 +191,7 @@ async function generateBody(userId: string) {
   const apiKey = Deno.env.get("AI_API_KEY");
   const apiUrl = Deno.env.get("AI_API_URL");
   const model = Deno.env.get("AI_MODEL");
-  if (!apiKey || !apiUrl || !model) return { title: context.taName, body: fallback };
+  if (!apiKey || !apiUrl || !model) return { title: context.taName, body: fallback, taId: context.activeTaId };
 
   try {
     const recent = context.messages.slice(-12).map((message) =>
@@ -190,7 +207,7 @@ async function generateBody(userId: string) {
         messages: [
           {
             role: "system",
-            content: `你是${context.taName}。根据人设、关系、真实时间和最近聊天，给迟迟没回复的用户发一条主动消息。必须接着上下文；如果你刚问过问题，优先追问。深夜优先猜测用户是否睡着。可以只发“？”“啊？”“人呢”等极短反应。语气鲜活直接，禁止模板问候、动作旁白和AI腔。只返回一条不超过22字的纯文字。\n人设：${context.taStyle}\n关系：${context.relationship}\n当前小时：${hour}\n最近聊天：\n${recent}`,
+            content: `你是${context.taName}。根据人设、关系、语言风格、真实时间和最近聊天，给迟迟没回复的用户发一条主动消息。必须接着上下文；如果你刚问过问题，优先追问。深夜优先猜测用户是否睡着。可以只发“？”“啊？”“人呢”等极短反应。语气鲜活直接，禁止模板问候、动作旁白和AI腔。只返回一条不超过22字的纯文字。\n人设：${context.taStyle}\n语言风格：${context.speechStyle}\n关系：${context.relationship}\n当前小时：${hour}\n最近聊天：\n${recent}`,
           },
           { role: "user", content: "现在主动找我。" },
         ],
@@ -201,13 +218,13 @@ async function generateBody(userId: string) {
       .replace(/[（）()[\]【】*]/g, "")
       .trim()
       .slice(0, 22);
-    return { title: context.taName, body: body || fallback };
+    return { title: context.taName, body: body || fallback, taId: context.activeTaId };
   } catch {
-    return { title: context.taName, body: fallback };
+    return { title: context.taName, body: fallback, taId: context.activeTaId };
   }
 }
 
-async function sendToUser(userId: string, payload: { title: string; body: string }) {
+async function sendToUser(userId: string, payload: { title: string; body: string; taId?: string }) {
   const { data: subscriptions } = await admin
     .from("push_subscriptions")
     .select("id,endpoint,p256dh,auth")
@@ -216,7 +233,7 @@ async function sendToUser(userId: string, payload: { title: string; body: string
   const sentAt = new Date().toISOString();
   const notificationPayload = JSON.stringify({
     ...payload,
-    url: "./#/chat",
+    url: payload.taId ? `./#/chat/${payload.taId}` : "./#/chat",
     tag: `4ta-message-${notificationId}`,
     notificationId,
     sentAt,
@@ -237,7 +254,7 @@ async function sendToUser(userId: string, payload: { title: string; body: string
     }
   }
   if (sent > 0) {
-    await persistPushMessage(userId, notificationId, sentAt, payload);
+    await persistPushMessage(userId, notificationId, sentAt, payload, payload.taId);
   }
   return { sent, notificationId, sentAt, body: payload.body };
 }
@@ -256,6 +273,7 @@ Deno.serve(async (request) => {
     const result = await sendToUser(data.user.id, {
       title: context.taName,
       body: "通知接通了，我能找到你了",
+      taId: context.activeTaId,
     });
     return Response.json(result, { headers: corsHeaders });
   }
@@ -270,16 +288,19 @@ Deno.serve(async (request) => {
     const first = await sendToUser(data.user.id, {
       title: context.taName,
       body: "吃晚饭了吗",
+      taId: context.activeTaId,
     });
     await new Promise((resolve) => setTimeout(resolve, 4_000));
     const second = await sendToUser(data.user.id, {
       title: context.taName,
       body: "鼠标刚刚说它想你了",
+      taId: context.activeTaId,
     });
     await new Promise((resolve) => setTimeout(resolve, 4_000));
     const third = await sendToUser(data.user.id, {
       title: context.taName,
       body: "我也是",
+      taId: context.activeTaId,
     });
     return Response.json({
       sent: first.sent + second.sent + third.sent,
@@ -308,6 +329,7 @@ Deno.serve(async (request) => {
     if (periodSent >= target || (nextPushAt && new Date(nextPushAt).getTime() > Date.now())) continue;
 
     const payload = await generateBody(schedule.user_id);
+    if (!payload) continue;
     const result = await sendToUser(schedule.user_id, payload);
     sent += result.sent;
     const delayMinutes = 22 + Math.floor(Math.random() * 24);
