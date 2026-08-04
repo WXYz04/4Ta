@@ -1,4 +1,4 @@
-const CACHE_NAME = "4ta-shell-v19";
+const CACHE_NAME = "4ta-shell-v20";
 const APP_SHELL = [
   "./",
   "./manifest.webmanifest",
@@ -24,6 +24,18 @@ self.addEventListener("activate", (event) => {
 
 self.addEventListener("fetch", (event) => {
   if (event.request.method !== "GET") return;
+  const isMedia = ["image", "audio"].includes(event.request.destination) || /\.(?:png|jpe?g|webp|gif|svg|wav|mp3|m4a|webm)(?:\?|$)/i.test(event.request.url);
+  if (isMedia) {
+    event.respondWith(caches.open(CACHE_NAME).then(async (cache) => {
+      const cached = await cache.match(event.request);
+      const network = fetch(event.request).then((response) => {
+        if (response.ok || response.type === "opaque") void cache.put(event.request, response.clone());
+        return response;
+      }).catch(() => cached);
+      return cached || network;
+    }));
+    return;
+  }
   event.respondWith(
     fetch(event.request).catch(() =>
       caches.match(event.request).then((cached) => cached ?? caches.match("./")),
