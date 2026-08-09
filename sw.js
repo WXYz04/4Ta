@@ -1,4 +1,4 @@
-const CACHE_NAME = "4ta-shell-v21";
+const CACHE_NAME = "4ta-shell-v22";
 const APP_SHELL = [
   "./",
   "./manifest.webmanifest",
