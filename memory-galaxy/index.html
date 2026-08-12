@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <meta name="theme-color" content="#020203" />
+    <title>4Ta · 记忆银河 3D Demo</title>
+    <script type="module" crossorigin src="./assets/index-Df1v5Ftb.js"></script>
+    <link rel="stylesheet" crossorigin href="./assets/index-BYwGusrI.css">
+  </head>
+  <body>
+    <div id="app">
+      <div id="scene" aria-label="可交互的三维记忆银河"></div>
+      <header class="topbar">
+        <div class="actions"><button id="summary">摘要状态</button><button id="motion">暂停流动</button><button id="reset">返回全景</button></div>
+      </header>
+      <div class="depth-hint"><span></span><b id="viewMode">银河全景</b><em>滑动旋转 · 双指或滚轮缩放 · 点击记忆星星</em></div>
+      <aside id="panel" class="panel" aria-live="polite">
+        <button id="close" class="close">×</button>
+        <div class="eyebrow" id="category">MEMORY</div>
+        <h2 id="title">记忆详情</h2>
+        <div class="meta" id="meta"></div>
+        <div id="memoryContent">
+          <textarea id="content" aria-label="记忆内容"></textarea>
+          <blockquote id="diary" hidden><small>TA 写下的日记</small><span></span></blockquote>
+          <div id="tags" class="tags"></div>
+          <button id="pin" class="primary">固定这颗记忆 · 永不遗忘</button>
+        </div>
+        <div id="summaryContent" class="summary" hidden>
+          <div><span>完整聊天记录</span><b>128 条</b></div>
+          <div><span>较早聊天摘要</span><b>1—108 条</b></div>
+          <div><span>最近聊天原文</span><b>109—128 条</b></div>
+          <i><u></u></i>
+          <div><span>下次摘要</span><b>第 150 条后</b></div>
+          <p>你喜欢吃辣但不喜欢香菜。你们最近约好周末吃火锅；餐厅还没有确定。上一次争执已经和好，但江屿仍有一点在意。</p>
+        </div>
+      </aside>
+      <div class="loading" id="loading"><span></span><p>正在进入记忆银河</p></div>
+    </div>
+  </body>
+</html>
