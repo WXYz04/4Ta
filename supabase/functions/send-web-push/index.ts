@@ -6,14 +6,31 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-cron-secret",
 };
 
-const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-const vapidPublicKey = Deno.env.get("WEB_PUSH_VAPID_PUBLIC_KEY")!;
-const vapidPrivateKey = Deno.env.get("WEB_PUSH_VAPID_PRIVATE_KEY")!;
 const cronSecret = Deno.env.get("WEB_PUSH_CRON_SECRET") || "";
+type AdminClient = ReturnType<typeof createClient>;
+let admin: AdminClient | null = null;
+let webPushReady = false;
 
-webpush.setVapidDetails("mailto:admin@4ta.app", vapidPublicKey, vapidPrivateKey);
-const admin = createClient(supabaseUrl, serviceRoleKey);
+function requiredSecret(name: string) {
+  const value = Deno.env.get(name)?.trim();
+  if (!value) throw new Error(`推送服务缺少 ${name} 配置`);
+  return value;
+}
+
+function ensureRuntime() {
+  if (!admin) {
+    admin = createClient(requiredSecret("SUPABASE_URL"), requiredSecret("SUPABASE_SERVICE_ROLE_KEY"));
+  }
+  if (!webPushReady) {
+    webpush.setVapidDetails(
+      "mailto:admin@4ta.app",
+      requiredSecret("WEB_PUSH_VAPID_PUBLIC_KEY"),
+      requiredSecret("WEB_PUSH_VAPID_PRIVATE_KEY"),
+    );
+    webPushReady = true;
+  }
+  return admin;
+}
 
 function timeGreeting(date: Date) {
   const hour = date.getUTCHours() + 8;
@@ -55,6 +72,7 @@ function activePushPeriod(date = new Date()) {
 }
 
 async function userContext(userId: string, preferredTaId?: string) {
+  const admin = ensureRuntime();
   const { data } = await admin
     .from("app_records")
     .select("record_key,payload")
@@ -122,6 +140,7 @@ async function persistPushMessage(
   payload: { title: string; body: string },
   taId?: string,
 ) {
+  const admin = ensureRuntime();
   const context = await userContext(userId, taId);
   if (context.messages.some((message) => message.id === notificationId)) return;
   const message = {
@@ -225,6 +244,7 @@ async function generateBody(userId: string) {
 }
 
 async function sendToUser(userId: string, payload: { title: string; body: string; taId?: string }) {
+  const admin = ensureRuntime();
   const { data: subscriptions } = await admin
     .from("push_subscriptions")
     .select("id,endpoint,p256dh,auth")
@@ -262,7 +282,8 @@ async function sendToUser(userId: string, payload: { title: string; body: string
 Deno.serve(async (request) => {
   if (request.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   try {
-  const body = await request.json().catch(() => ({}));
+    const admin = ensureRuntime();
+    const body = await request.json().catch(() => ({}));
 
   if (body.mode === "test") {
     const token = request.headers.get("Authorization")?.replace(/^Bearer\s+/i, "") || "";
