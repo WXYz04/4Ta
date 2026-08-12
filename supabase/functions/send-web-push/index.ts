@@ -261,6 +261,7 @@ async function sendToUser(userId: string, payload: { title: string; body: string
 
 Deno.serve(async (request) => {
   if (request.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+  try {
   const body = await request.json().catch(() => ({}));
 
   if (body.mode === "test") {
@@ -343,4 +344,11 @@ Deno.serve(async (request) => {
     }).eq("user_id", schedule.user_id);
   }
   return Response.json({ checked: schedules?.length || 0, sent }, { headers: corsHeaders });
+  } catch (error) {
+    console.error("send-web-push failed", error);
+    return Response.json({
+      sent: 0,
+      error: error instanceof Error ? error.message : "推送服务暂时不可用",
+    }, { status: 500, headers: corsHeaders });
+  }
 });
