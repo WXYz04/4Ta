@@ -5,8 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     <meta name="theme-color" content="#020203" />
     <title>4Ta · 记忆银河 3D Demo</title>
-    <script type="module" crossorigin src="./assets/index-D_T9haZa.js"></script>
-    <link rel="stylesheet" crossorigin href="./assets/index-DXsqgNtH.css">
+    <script type="module" crossorigin src="./assets/index-Bjn2Dyl9.js"></script>
+    <link rel="stylesheet" crossorigin href="./assets/index-r2lIxrJf.css">
   </head>
   <body>
     <div id="app">
@@ -49,10 +49,10 @@
       <section id="migrationPage" class="migration-page" aria-hidden="true">
         <header><button id="closeMigration" type="button" aria-label="关闭">×</button><div><small>MEMORY MIGRATION</small><h2>记忆迁徙</h2><p>把另一个时空的记忆带回来，或将这里的记忆安全带走。</p></div></header>
         <div class="migration-grid">
-          <article><span>01</span><h3>导入文档</h3><p>支持 4Ta JSON、Markdown、TXT 与聊天文档。展示阶段只模拟候选预览，不读取真实聊天。</p><input id="memoryImportFile" type="file" accept=".json,.md,.txt,.doc,.docx" hidden><button id="chooseImport" type="button">选择文档</button><div id="importPreview" class="import-preview" hidden></div></article>
-          <article><span>02</span><h3>导出记忆</h3><p>导出当前 Ta 的预设银河。JSON 用于备份迁移，Markdown 便于自己阅读。</p><div class="export-actions"><button id="exportJson" type="button">导出 JSON</button><button id="exportMarkdown" type="button">导出 Markdown</button></div></article>
+          <article><span>01</span><h3>导入文档</h3><p>支持 4Ta JSON、Markdown、TXT 与聊天文档。导入前会整理候选记忆，由你确认后再迁入银河。</p><input id="memoryImportFile" type="file" accept=".json,.md,.txt,.doc,.docx" hidden><button id="chooseImport" type="button">选择文档</button><div id="importPreview" class="import-preview" hidden></div></article>
+          <article><span>02</span><h3>导出记忆</h3><p>带走当前 Ta 的整片记忆银河。JSON 用于完整迁徙，Markdown 便于随时阅读。</p><div class="export-actions"><button id="exportJson" type="button">导出 JSON</button><button id="exportMarkdown" type="button">导出 Markdown</button></div></article>
         </div>
-        <small class="demo-warning">当前为预设展示数据 · 未读取真实聊天</small>
+        <small class="demo-warning">记忆会跟随 Ta 一起抵达新的时空</small>
       </section>
       <div class="loading" id="loading"><span></span><p>正在进入记忆银河</p></div>
     </div>
