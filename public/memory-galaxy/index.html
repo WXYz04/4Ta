@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <meta name="theme-color" content="#020203" />
+    <title>4Ta · 记忆银河 3D Demo</title>
+    <script type="module" crossorigin src="./assets/index-Cfs7SPuZ.js"></script>
+    <link rel="stylesheet" crossorigin href="./assets/index-Qak3ZRfa.css">
+  </head>
+  <body>
+    <div id="app">
+      <div class="milky-way-band" aria-hidden="true"><i></i><i></i><i></i></div>
+      <div id="scene" aria-label="可交互的三维记忆银河"></div>
+      <nav id="galaxyChoices" class="galaxy-choices" aria-label="选择记忆星系">
+        <strong id="activeGalaxyTitle">「共同经历」</strong>
+        <small id="galaxyEnterHint">放大后进入该星系</small>
+        <button data-category="关于她"><i></i><span>关于她</span></button><button data-category="关于我们"><i></i><span>关于我们</span></button>
+        <button data-category="平行时空"><i></i><span>平行时空</span></button><button data-category="共同经历"><i></i><span>共同经历</span></button>
+      </nav>
+      <div id="galaxyEncounter" class="galaxy-encounter">与他相遇已经<b>0天 0时 0分 0秒</b></div>
+      <header class="topbar">
+        <div class="actions"><button id="summary">摘要状态</button><button id="migration">记忆迁徙</button><button id="reset">返回全景</button></div>
+      </header>
+      <div class="depth-hint"><span></span><b id="viewMode">银河全景</b><em>滑动旋转 · 双指或滚轮缩放 · 点击记忆星星</em></div>
+      <aside id="panel" class="panel" aria-live="polite">
+        <button id="close" class="close">×</button>
+        <div class="memory-level" id="memoryLevel">记忆等级：2 / 5</div>
+        <div class="planet-preview" id="planetPreview"><i></i></div>
+        <div class="memory-code" id="category">B20260811</div>
+        <h2 id="title">记忆详情</h2>
+        <div class="meta" id="meta"></div>
+        <div id="memoryContent">
+          <small class="field-label" id="memoryFieldLabel">Ta的记忆 · 可以修改</small>
+          <textarea id="content" aria-label="记忆内容"></textarea>
+          <blockquote id="diary"><small><span id="attitudeTitle">Ta的态度</span> <button id="refreshAttitude" type="button" aria-label="让Ta重新想想" title="让Ta重新想想">↻</button></small><span></span></blockquote>
+          <div id="tags" class="tags"></div>
+          <button id="pin" class="primary">固定这颗记忆 · 永不遗忘</button>
+        </div>
+        <div id="summaryContent" class="summary" hidden>
+          <div><span>完整聊天记录</span><b>128 条</b></div>
+          <div><span>较早聊天摘要</span><b>1—108 条</b></div>
+          <div><span>最近聊天原文</span><b>109—128 条</b></div>
+          <i><u></u></i>
+          <div><span>下次摘要</span><b>第 150 条后</b></div>
+          <p>你喜欢吃辣但不喜欢香菜。你们最近约好周末吃火锅；餐厅还没有确定。上一次争执已经和好，但江屿仍有一点在意。</p>
+        </div>
+      </aside>
+      <section id="migrationPage" class="migration-page" aria-hidden="true">
+        <header><button id="closeMigration" type="button" aria-label="关闭">×</button><div><h2>记忆迁徙</h2><p>把另一个时空的记忆带回来，或将这里的记忆安全带走。</p></div></header>
+        <div class="migration-grid">
+          <article><h3>导入文档</h3><p>支持 4Ta JSON、Markdown、TXT 与聊天文档。导入前会整理候选记忆，由你确认后再迁入宇宙。</p><input id="memoryImportFile" type="file" accept=".json,.md,.txt,.doc,.docx" hidden><button id="chooseImport" type="button">选择文档</button><div id="importPreview" class="import-preview" hidden></div></article>
+          <article><h3>导出记忆</h3><p>带走当前 Ta 的整片记忆宇宙。JSON 用于完整迁徙，Markdown 便于随时阅读。</p><div class="export-actions"><button id="exportJson" type="button">导出 JSON</button><button id="exportMarkdown" type="button">导出 Markdown</button></div></article>
+        </div>
+      </section>
+      <div class="loading" id="loading"><span></span><p>正在进入记忆银河</p></div>
+    </div>
+  </body>
+</html>
