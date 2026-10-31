@@ -1,19 +1,61 @@
-const ORIGIN = "https://qlixoxvwishgsybjwetg.supabase.co";
-const KEY = "sb_publishable_x5p1DZPP0iGqi0220f7qSw_Jmu2gl3Y";
-const ALLOWED = new Set(["https://4ta.space", "https://www.4ta.space"]);
-function cors(req, res) {
-  const origin = req.headers.origin || "";
-  if (ALLOWED.has(origin)) res.setHeader("Access-Control-Allow-Origin", origin);
-  res.setHeader("Vary", "Origin"); res.setHeader("Access-Control-Allow-Methods", "GET,POST,PATCH,PUT,OPTIONS"); res.setHeader("Access-Control-Allow-Headers", "authorization,apikey,content-type,x-client-info,x-supabase-api-version");
+const SUPABASE_ORIGIN = "https://qlixoxvwishgsybjwetg.supabase.co";
+const PUBLISHABLE_KEY = "sb_publishable_x5p1DZPP0iGqi0220f7qSw_Jmu2gl3Y";
+const ALLOWED_ORIGINS = new Set([
+  "https://4ta.space",
+  "https://www.4ta.space",
+]);
+
+function applyCors(request, response) {
+  const origin = request.headers.origin || "";
+  if (ALLOWED_ORIGINS.has(origin)) response.setHeader("Access-Control-Allow-Origin", origin);
+  response.setHeader("Vary", "Origin");
+  response.setHeader("Access-Control-Allow-Methods", "GET,POST,PATCH,PUT,DELETE,OPTIONS");
+  response.setHeader("Access-Control-Allow-Headers", "authorization,apikey,content-type,x-client-info,x-supabase-api-version,accept-profile,content-profile,prefer,range,x-upsert");
+  response.setHeader("Access-Control-Expose-Headers", "content-range,range");
 }
-export default async function handler(req, res) {
-  cors(req, res); if (req.method === "OPTIONS") return res.status(204).end();
-  if (!["GET","POST","PATCH","PUT"].includes(req.method)) return res.status(405).json({message:"Method not allowed"});
-  const origin=req.headers.origin||""; if(origin&&!ALLOWED.has(origin)) return res.status(403).json({message:"Origin not allowed"});
-  const path=Array.isArray(req.query.path)?req.query.path.join("/"):String(req.query.path||"");
-  if(!/^(auth|rest|storage)\/v1(?:\/|$)/.test(path)) return res.status(404).json({message:"Unsupported Supabase path"});
-  const query=new URLSearchParams(); for(const [k,v] of Object.entries(req.query)) if(k!=="path") for(const x of(Array.isArray(v)?v:[v])) query.append(k,String(x));
-  const headers={apikey:KEY,"content-type":req.headers["content-type"]||"application/json","x-client-info":"4ta-vercel-proxy"}; if(req.headers.authorization) headers.authorization=req.headers.authorization;
-  const upstream=await fetch(ORIGIN+"/"+path+(query.size?"?"+query:""),{method:req.method,headers,body:req.method==="GET"?undefined:typeof req.body==="string"||Buffer.isBuffer(req.body)?req.body:JSON.stringify(req.body??{})});
-  const body=Buffer.from(await upstream.arrayBuffer()); const type=upstream.headers.get("content-type"); if(type)res.setHeader("Content-Type",type); res.setHeader("Cache-Control","no-store"); return res.status(upstream.status).send(body);
+
+export default async function handler(request, response) {
+  applyCors(request, response);
+  if (request.method === "OPTIONS") return response.status(204).end();
+
+  if (!["GET", "POST", "PATCH", "PUT", "DELETE"].includes(request.method)) {
+    return response.status(405).json({ message: "Method not allowed" });
+  }
+
+  const origin = request.headers.origin || "";
+  if (origin && !ALLOWED_ORIGINS.has(origin)) return response.status(403).json({ message: "Origin not allowed" });
+
+  const rawPath = Array.isArray(request.query.path) ? request.query.path.join("/") : String(request.query.path || "");
+  if (!/^(auth|rest|storage)\/v1(?:\/|$)/.test(rawPath)) return response.status(404).json({ message: "Unsupported Supabase path" });
+
+  const query = new URLSearchParams();
+  Object.entries(request.query).forEach(([key, value]) => {
+    if (key === "path") return;
+    (Array.isArray(value) ? value : [value]).forEach((entry) => query.append(key, String(entry)));
+  });
+  const target = `${SUPABASE_ORIGIN}/${rawPath}${query.size ? `?${query}` : ""}`;
+  const headers = {
+    apikey: PUBLISHABLE_KEY,
+    "content-type": request.headers["content-type"] || "application/json",
+    "x-client-info": request.headers["x-client-info"] || "4ta-vercel-proxy",
+  };
+  if (request.headers.authorization) headers.authorization = request.headers.authorization;
+  for (const name of ["accept-profile", "content-profile", "prefer", "range", "x-upsert"]) {
+    if (request.headers[name]) headers[name] = request.headers[name];
+  }
+
+  const upstream = await fetch(target, {
+    method: request.method,
+    headers,
+    body: request.method === "GET" || request.method === "HEAD"
+      ? undefined
+      : typeof request.body === "string" || Buffer.isBuffer(request.body)
+        ? request.body
+        : JSON.stringify(request.body ?? {}),
+  });
+  const body = Buffer.from(await upstream.arrayBuffer());
+  const contentType = upstream.headers.get("content-type");
+  if (contentType) response.setHeader("Content-Type", contentType);
+  response.setHeader("Cache-Control", "no-store");
+  return response.status(upstream.status).send(body);
 }

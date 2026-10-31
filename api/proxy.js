@@ -6,10 +6,11 @@ export default async function handler(req, res) {
   const origin = req.headers.origin || "";
   if (ALLOWED.has(origin)) res.setHeader("Access-Control-Allow-Origin", origin);
   res.setHeader("Vary", "Origin");
-  res.setHeader("Access-Control-Allow-Methods", "GET,POST,PATCH,PUT,OPTIONS");
-  res.setHeader("Access-Control-Allow-Headers", "authorization,apikey,content-type,x-client-info,x-supabase-api-version");
+  res.setHeader("Access-Control-Allow-Methods", "GET,POST,PATCH,PUT,DELETE,OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "authorization,apikey,content-type,x-client-info,x-supabase-api-version,accept-profile,content-profile,prefer,range,x-upsert");
+  res.setHeader("Access-Control-Expose-Headers", "content-range,range");
   if (req.method === "OPTIONS") return res.status(204).end();
-  if (!["GET", "POST", "PATCH", "PUT"].includes(req.method)) return res.status(405).json({ message: "Method not allowed" });
+  if (!["GET", "POST", "PATCH", "PUT", "DELETE"].includes(req.method)) return res.status(405).json({ message: "Method not allowed" });
   if (origin && !ALLOWED.has(origin)) return res.status(403).json({ message: "Origin not allowed" });
 
   const path = String(req.query.path || "");
@@ -25,6 +26,9 @@ export default async function handler(req, res) {
     "x-client-info": "4ta-vercel-proxy"
   };
   if (req.headers.authorization) headers.authorization = req.headers.authorization;
+  for (const name of ["accept-profile", "content-profile", "prefer", "range", "x-upsert"]) {
+    if (req.headers[name]) headers[name] = req.headers[name];
+  }
   const upstream = await fetch(`${ORIGIN}/${path}${query.size ? `?${query}` : ""}`, {
     method: req.method,
     headers,
