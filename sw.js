@@ -1,4 +1,4 @@
-const CACHE_NAME = "4ta-shell-v29";
+const CACHE_NAME = "4ta-shell-v30";
 const APP_SHELL = [
   "./",
   "./manifest.webmanifest",
@@ -7,7 +7,8 @@ const APP_SHELL = [
 ];
 
 self.addEventListener("install", (event) => {
-  event.waitUntil(caches.open(CACHE_NAME).then((cache) => cache.addAll(APP_SHELL)));
+  event.waitUntil(caches.open(CACHE_NAME).then((cache) =>
+    cache.addAll(APP_SHELL.map((url) => new Request(url, { cache: "reload" })))));
   self.skipWaiting();
 });
 
@@ -24,6 +25,18 @@ self.addEventListener("activate", (event) => {
 
 self.addEventListener("fetch", (event) => {
   if (event.request.method !== "GET") return;
+  if (event.request.mode === "navigate") {
+    event.respondWith(
+      fetch(event.request, { cache: "reload" }).then((response) => {
+        if (response.ok) {
+          const copy = response.clone();
+          void caches.open(CACHE_NAME).then((cache) => cache.put("./", copy));
+        }
+        return response;
+      }).catch(() => caches.match("./")),
+    );
+    return;
+  }
   const isMedia = ["image", "audio"].includes(event.request.destination) || /\.(?:png|jpe?g|webp|gif|svg|wav|mp3|m4a|webm)(?:\?|$)/i.test(event.request.url);
   if (isMedia) {
     event.respondWith(caches.open(CACHE_NAME).then(async (cache) => {

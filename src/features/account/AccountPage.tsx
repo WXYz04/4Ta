@@ -118,22 +118,23 @@ function AccountPage() {
     }
     setSaving(true);
     try {
+      const mustRecoverLegacyAccount = FORCED_LEGACY_RECOVERY_ACCOUNTS.has(cleanAccount.toLocaleLowerCase());
       const backendAccount = await withTimeout(registerOrLoginBackend(cleanAccount, password), 8_000, "账号服务响应超时，请重试");
       const cloudAccount = await withTimeout(loginOrRegisterCloudAccount(cleanAccount, password), 20_000, "登录服务响应超时，请检查网络后重试");
       const passwordHash = await hashPassword(password);
       // Never erase existing characters or chats merely because the account
       // service classified this credential pair as a new account.
-      if (cloudAccount.isNew && !hasMeaningfulLocalData()) clearPreviousAccountData();
+      if (cloudAccount.isNew && !mustRecoverLegacyAccount && !hasMeaningfulLocalData()) clearPreviousAccountData();
       localStorage.setItem("4ta:account-name", cleanAccount);
       localStorage.setItem("4ta:account-password-hash", passwordHash);
       localStorage.removeItem(LOCAL_RECOVERY_KEY);
       if (backendAccount) saveBackendToken(backendAccount.token);
       await withTimeout(saveCloudProfile(cleanAccount), 15_000, "账号已登录，但云端资料保存超时");
-      const restored = cloudAccount.isNew
+      const restored = cloudAccount.isNew && !mustRecoverLegacyAccount
         ? false
         : await withTimeout(restoreCloudBootstrapData(), 15_000, "账号已登录，但基础资料恢复超时");
       let existingAccountRecovered = restored && hasCompletedExistingAccount();
-      if (FORCED_LEGACY_RECOVERY_ACCOUNTS.has(cleanAccount.toLocaleLowerCase())) {
+      if (mustRecoverLegacyAccount) {
         // Bootstrap recovery already fetched the profile list and individual
         // identity snapshots. Never fetch chats/media here: this legacy
         // account has a large history and that would block login again.
@@ -146,7 +147,7 @@ function AccountPage() {
       }
       localStorage.setItem("4ta:account-name", cleanAccount);
       navigate(existingAccountRecovered ? "/home" : "/welcome", { replace: true });
-      if (!cloudAccount.isNew) {
+      if (!cloudAccount.isNew || mustRecoverLegacyAccount) {
         // Full history/media restoration is intentionally detached from login.
         // It can be large on iOS and continues after the user enters the app.
         void restoreAllCloudData().then(() => {

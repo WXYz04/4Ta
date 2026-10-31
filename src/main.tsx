@@ -31,7 +31,7 @@ if (customAppIcon) {
 if ("serviceWorker" in navigator && import.meta.env.PROD) {
   window.addEventListener("load", () => {
     navigator.serviceWorker
-      .register(`${import.meta.env.BASE_URL}sw.js?v=29`, { updateViaCache: "none" })
+      .register(`${import.meta.env.BASE_URL}sw.js?v=30`, { updateViaCache: "none" })
       .then((registration) => registration.update())
       .catch(() => undefined);
   });
