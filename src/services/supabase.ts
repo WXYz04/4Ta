@@ -13,7 +13,10 @@ import {
 import { sha256 } from "./sha256";
 import { isStorageQuotaError, reclaimRedundantLocalStorage } from "./safeStorage";
 
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || "https://qlixoxvwishgsybjwetg.supabase.co";
+const SUPABASE_DIRECT_URL = "https://qlixoxvwishgsybjwetg.supabase.co";
+const SUPABASE_PROXY_URL = "https://api.4ta.space/api/supabase";
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL ||
+  (["4ta.space", "www.4ta.space"].includes(window.location.hostname) ? SUPABASE_PROXY_URL : SUPABASE_DIRECT_URL);
 const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_x5p1DZPP0iGqi0220f7qSw_Jmu2gl3Y";
 
 export const supabase = createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
@@ -21,6 +24,7 @@ export const supabase = createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
     persistSession: true,
     autoRefreshToken: true,
     detectSessionInUrl: true,
+    storageKey: "4ta:supabase-auth",
   },
 });
 

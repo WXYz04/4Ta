@@ -1,5 +1,5 @@
 import { FormEvent, TouchEvent, useEffect, useState } from "react";
-import { Navigate, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { registerOrLoginBackend, saveBackendToken } from "../../services/backend";
 import {
   changeCloudPassword,
@@ -68,13 +68,9 @@ function withTimeout<T>(promise: Promise<T>, milliseconds: number, message: stri
 }
 
 export function AccountEntryPage() {
-  if (
-    localStorage.getItem(LOCAL_RECOVERY_KEY) !== "1" &&
-    localStorage.getItem("4ta:account-name") &&
-    localStorage.getItem("4ta:onboarding-complete") === "1"
-  ) {
-    return <Navigate to="/home" replace />;
-  }
+  // The local account marker is not proof of a valid cloud login. Always let
+  // AccountPage verify the persisted Supabase session first; a valid session
+  // restores automatically, while an expired/missing one stays on login.
   return <AccountPage />;
 }
 
@@ -157,19 +153,12 @@ function AccountPage() {
       }
     } catch (saveError) {
       if (isCloudNetworkFailure(saveError)) {
-        // The user's credentials cannot be verified while the Supabase project
-        // domain is blocked by the current network. Keep all existing device
-        // data intact and allow a reversible local session instead of trapping
-        // the user on the account page or misclassifying this as a new account.
-        localStorage.setItem("4ta:account-name", cleanAccount);
-        localStorage.setItem("4ta:account-password-hash", await hashPassword(password));
+        // Never turn a failed cloud login into an apparently successful empty
+        // account. That creates the generic "Ta" profile and hides the real
+        // recovery failure. Keep the user on the login page with an actionable
+        // error so credentials can be retried through the same-origin proxy.
         localStorage.setItem(LOCAL_RECOVERY_KEY, "1");
-        if (hasMeaningfulLocalData()) {
-          localStorage.setItem("4ta:onboarding-complete", "1");
-          navigate("/home", { replace: true });
-        } else {
-          navigate("/welcome", { replace: true });
-        }
+        setError("手机未连接到云端，旧数据尚未恢复，请重试登录");
         return;
       }
       setError(saveError instanceof Error ? saveError.message : "账号保存失败，请重试");
