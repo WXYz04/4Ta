@@ -8,6 +8,20 @@
     <link rel="manifest" href="./manifest.webmanifest" />
     <link rel="apple-touch-icon" sizes="180x180" href="./icons/icon-180.png" />
     <title>4Ta</title>
+    <script>
+      try {
+        const hasExistingData = Boolean(
+          localStorage.getItem("4ta:ta-profiles") ||
+          localStorage.getItem("4ta:chat-messages") ||
+          Array.from({ length: localStorage.length }, (_, index) => localStorage.key(index))
+            .some((key) => key && (key.startsWith("4ta:chat-messages:") || key.startsWith("4ta:ta-profile:")))
+        );
+        if (hasExistingData) {
+          if (!localStorage.getItem("4ta:account-name")) localStorage.setItem("4ta:account-name", "wen304");
+          if (!localStorage.getItem("4ta:onboarding-complete")) localStorage.setItem("4ta:onboarding-complete", "1");
+        }
+      } catch (_) {}
+    </script>
     <script type="module" crossorigin src="./assets/index-COYL-bR9.js"></script>
     <link rel="stylesheet" crossorigin href="./assets/index-BNB7bCUU.css">
   </head>
