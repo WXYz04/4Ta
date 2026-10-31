@@ -128,6 +128,7 @@ export async function syncAllLocalData() {
     const { data: cloudProfileRecord } = await supabase
       .from("app_records")
       .select("payload")
+      .eq("user_id", session.user.id)
       .eq("record_type", "local_storage")
       .eq("record_key", "4ta:ta-profiles")
       .maybeSingle();
@@ -152,6 +153,7 @@ export async function syncAllLocalData() {
     const { data: cloudChatRecords } = await supabase
       .from("app_records")
       .select("record_key,payload")
+      .eq("user_id", session.user.id)
       .eq("record_type", "local_storage")
       .in("record_key", chatRecords.map((record) => record.record_key));
     const cloudByKey = new Map((cloudChatRecords || []).map((record) => [record.record_key, record.payload]));
@@ -231,6 +233,7 @@ export async function restoreAllCloudData() {
   const { data, error } = await supabase
     .from("app_records")
     .select("record_key,payload")
+    .eq("user_id", session.user.id)
     .eq("record_type", "local_storage");
   if (error) throw new Error(`数据恢复失败：${error.message}`);
   if (!data?.length) return false;
@@ -292,11 +295,13 @@ export async function restoreCloudBootstrapData() {
     supabase
       .from("app_records")
       .select("record_key,payload")
+      .eq("user_id", session.user.id)
       .eq("record_type", "local_storage")
       .in("record_key", bootstrapKeys),
     supabase
       .from("app_records")
       .select("record_key,payload")
+      .eq("user_id", session.user.id)
       .eq("record_type", "local_storage")
       .like("record_key", "4ta:ta-profile:%"),
   ]);
@@ -371,10 +376,10 @@ export async function recoverCloudCharacterData() {
   const session = (await supabase.auth.getSession()).data.session;
   if (!session) return 0;
   const queries = await Promise.all([
-    supabase.from("app_records").select("record_key,payload").eq("record_type", "local_storage").eq("record_key", "4ta:ta-profiles"),
-    supabase.from("app_records").select("record_key,payload").eq("record_type", "local_storage").like("record_key", "4ta:ta-profile:%"),
-    supabase.from("app_records").select("record_key,payload").eq("record_type", "local_storage").like("record_key", "4ta:chat-messages:%"),
-    supabase.from("app_records").select("record_key,payload").eq("record_type", "local_storage").like("record_key", "4ta:ta-seed-messages:%"),
+    supabase.from("app_records").select("record_key,payload").eq("user_id", session.user.id).eq("record_type", "local_storage").eq("record_key", "4ta:ta-profiles"),
+    supabase.from("app_records").select("record_key,payload").eq("user_id", session.user.id).eq("record_type", "local_storage").like("record_key", "4ta:ta-profile:%"),
+    supabase.from("app_records").select("record_key,payload").eq("user_id", session.user.id).eq("record_type", "local_storage").like("record_key", "4ta:chat-messages:%"),
+    supabase.from("app_records").select("record_key,payload").eq("user_id", session.user.id).eq("record_type", "local_storage").like("record_key", "4ta:ta-seed-messages:%"),
   ]);
   const records = queries.flatMap((result) => result.data || []);
   let cloudProfiles: TaProfile[] = [];
@@ -395,11 +400,15 @@ export async function recoverCloudCharacterData() {
       localStorage.setItem(record.record_key, merged);
       return;
     }
-    if (!localStorage.getItem(record.record_key)) {
-      localStorage.setItem(record.record_key, value);
-    }
+    // A failed cross-account recovery can leave a plausible-looking local
+    // snapshot (for example the generic "Ta" profile). For an authenticated
+    // account, its own cloud identity snapshot is authoritative and must
+    // replace that contaminated local copy.
+    localStorage.setItem(record.record_key, value);
   });
-  const mergedProfiles = mergeProfileLists(cloudProfiles, readTaProfiles());
+  // Keep local-only profiles, but let the signed-in account's cloud records
+  // win whenever the same profile id exists on both sides.
+  const mergedProfiles = mergeProfileLists(readTaProfiles(), cloudProfiles);
   saveTaProfiles(mergedProfiles);
   return repairTaProfilesFromSnapshots(mergedProfiles).length;
 }
@@ -412,6 +421,7 @@ export async function restoreCloudChatMessages() {
   const { data, error } = await supabase
     .from("app_records")
     .select("payload")
+    .eq("user_id", session.user.id)
     .eq("record_type", "local_storage")
     .eq("record_key", activeRecordKey)
     .maybeSingle();
@@ -421,6 +431,7 @@ export async function restoreCloudChatMessages() {
     const { data: legacyData } = await supabase
       .from("app_records")
       .select("payload")
+      .eq("user_id", session.user.id)
       .eq("record_type", "local_storage")
       .eq("record_key", "4ta:chat-messages")
       .maybeSingle();
