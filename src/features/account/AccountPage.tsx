@@ -5,6 +5,7 @@ import {
   changeCloudPassword,
   loginOrRegisterCloudAccount,
   logoutCloudAccount,
+  recoverCloudCharacterData,
   recoverSignedInCloudAccount,
   restoreAllCloudData,
   restoreCloudBootstrapData,
@@ -20,6 +21,7 @@ const ACCOUNT_KEYS = new Set([
 ]);
 
 const LOCAL_RECOVERY_KEY = "4ta:local-recovery-mode";
+const FORCED_LEGACY_RECOVERY_ACCOUNTS = new Set(["wen304"]);
 
 function hasMeaningfulLocalData() {
   return Array.from({ length: localStorage.length }, (_, index) => localStorage.key(index)).some((key) =>
@@ -131,8 +133,22 @@ function AccountPage() {
       const restored = cloudAccount.isNew
         ? false
         : await withTimeout(restoreCloudBootstrapData(), 15_000, "账号已登录，但基础资料恢复超时");
+      let existingAccountRecovered = restored && hasCompletedExistingAccount();
+      if (FORCED_LEGACY_RECOVERY_ACCOUNTS.has(cleanAccount.toLocaleLowerCase())) {
+        const recoveredCount = await withTimeout(
+          recoverCloudCharacterData(),
+          25_000,
+          "旧账号角色资料恢复超时，请重试",
+        );
+        if (recoveredCount < 1 && !hasRecoveredTaProfiles()) {
+          throw new Error("已登录旧账号，但没有读取到角色资料。系统已停止创建新角色，请稍后重试");
+        }
+        localStorage.setItem("4ta:onboarding-complete", "1");
+        localStorage.removeItem(LOCAL_RECOVERY_KEY);
+        existingAccountRecovered = true;
+      }
       localStorage.setItem("4ta:account-name", cleanAccount);
-      navigate(restored && hasCompletedExistingAccount() ? "/home" : "/welcome", { replace: true });
+      navigate(existingAccountRecovered ? "/home" : "/welcome", { replace: true });
       if (!cloudAccount.isNew) {
         // Full history/media restoration is intentionally detached from login.
         // It can be large on iOS and continues after the user enters the app.
