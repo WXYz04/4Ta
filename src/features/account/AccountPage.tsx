@@ -26,6 +26,20 @@ function hasMeaningfulLocalData() {
     key === "4ta:ta-profiles" || key === "4ta:chat-messages" || Boolean(key?.startsWith("4ta:chat-messages:")) || key === "4ta:onboarding-complete");
 }
 
+function hasRecoveredTaProfiles() {
+  try {
+    const profiles = JSON.parse(localStorage.getItem("4ta:ta-profiles") || "[]");
+    return Array.isArray(profiles) && profiles.some((profile) =>
+      profile && typeof profile.id === "string" && typeof profile.name === "string");
+  } catch {
+    return false;
+  }
+}
+
+function hasCompletedExistingAccount() {
+  return localStorage.getItem("4ta:onboarding-complete") === "1" || hasRecoveredTaProfiles();
+}
+
 function clearPreviousAccountData() {
   const keys = Array.from({ length: localStorage.length }, (_, index) => localStorage.key(index));
   keys.forEach((key) => {
@@ -77,7 +91,7 @@ function AccountPage() {
       .then((recoveredAccount) => {
         if (!active || !recoveredAccount) return;
         localStorage.setItem("4ta:account-name", recoveredAccount);
-        navigate(localStorage.getItem("4ta:onboarding-complete") === "1" ? "/home" : "/welcome", { replace: true });
+        navigate(hasCompletedExistingAccount() ? "/home" : "/welcome", { replace: true });
       })
       .catch(() => undefined)
       .finally(() => { if (active) setRecovering(false); });
@@ -118,7 +132,7 @@ function AccountPage() {
         ? false
         : await withTimeout(restoreCloudBootstrapData(), 15_000, "账号已登录，但基础资料恢复超时");
       localStorage.setItem("4ta:account-name", cleanAccount);
-      navigate(restored && localStorage.getItem("4ta:onboarding-complete") === "1" ? "/home" : "/welcome", { replace: true });
+      navigate(restored && hasCompletedExistingAccount() ? "/home" : "/welcome", { replace: true });
       if (!cloudAccount.isNew) {
         // Full history/media restoration is intentionally detached from login.
         // It can be large on iOS and continues after the user enters the app.

@@ -93,7 +93,9 @@ export async function recoverSignedInCloudAccount() {
     username = typeof data?.username === "string" ? data.username.trim() : "";
   }
   if (!username) return "";
-  await restoreAllCloudData();
+  // Only restore the small records needed to decide whether this is an
+  // existing account. Full chats/media continue after entering the app.
+  await restoreCloudBootstrapData();
   return username;
 }
 
@@ -286,18 +288,31 @@ export async function restoreCloudBootstrapData() {
   const session = (await supabase.auth.getSession()).data.session;
   if (!session) return false;
   const bootstrapKeys = ["4ta:ta-profiles", "4ta:onboarding-complete", "4ta:active-ta-id"];
-  const { data, error } = await supabase
-    .from("app_records")
-    .select("record_key,payload")
-    .eq("record_type", "local_storage")
-    .in("record_key", bootstrapKeys);
-  if (error) throw new Error(`基础数据恢复失败：${error.message}`);
-  for (const record of data || []) {
+  const [bootstrapResult, snapshotResult] = await Promise.all([
+    supabase
+      .from("app_records")
+      .select("record_key,payload")
+      .eq("record_type", "local_storage")
+      .in("record_key", bootstrapKeys),
+    supabase
+      .from("app_records")
+      .select("record_key,payload")
+      .eq("record_type", "local_storage")
+      .like("record_key", "4ta:ta-profile:%"),
+  ]);
+  if (bootstrapResult.error) throw new Error(`基础数据恢复失败：${bootstrapResult.error.message}`);
+  if (snapshotResult.error) throw new Error(`角色资料恢复失败：${snapshotResult.error.message}`);
+  const records = [...(bootstrapResult.data || []), ...(snapshotResult.data || [])];
+  for (const record of records) {
     const value = (record.payload as { value?: unknown })?.value;
     if (typeof value === "string") localStorage.setItem(record.record_key, value);
   }
-  repairTaProfilesFromSnapshots();
-  return Boolean(data?.length);
+  const profiles = repairTaProfilesFromSnapshots();
+  // Older accounts did not always persist the onboarding flag. Existing Ta
+  // records are stronger evidence than that optional marker and must never be
+  // routed into the first-use creation flow.
+  if (profiles.length > 0) localStorage.setItem("4ta:onboarding-complete", "1");
+  return records.length > 0;
 }
 
 function compactCloudCacheValue(value: string) {
