@@ -5,7 +5,6 @@ import {
   changeCloudPassword,
   loginOrRegisterCloudAccount,
   logoutCloudAccount,
-  recoverCloudCharacterData,
   recoverSignedInCloudAccount,
   restoreAllCloudData,
   restoreCloudBootstrapData,
@@ -135,12 +134,10 @@ function AccountPage() {
         : await withTimeout(restoreCloudBootstrapData(), 15_000, "账号已登录，但基础资料恢复超时");
       let existingAccountRecovered = restored && hasCompletedExistingAccount();
       if (FORCED_LEGACY_RECOVERY_ACCOUNTS.has(cleanAccount.toLocaleLowerCase())) {
-        const recoveredCount = await withTimeout(
-          recoverCloudCharacterData(),
-          25_000,
-          "旧账号角色资料恢复超时，请重试",
-        );
-        if (recoveredCount < 1 && !hasRecoveredTaProfiles()) {
+        // Bootstrap recovery already fetched the profile list and individual
+        // identity snapshots. Never fetch chats/media here: this legacy
+        // account has a large history and that would block login again.
+        if (!hasRecoveredTaProfiles()) {
           throw new Error("已登录旧账号，但没有读取到角色资料。系统已停止创建新角色，请稍后重试");
         }
         localStorage.setItem("4ta:onboarding-complete", "1");
