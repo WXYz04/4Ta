@@ -14,7 +14,10 @@ export default async function handler(req, res) {
   if (origin && !ALLOWED.has(origin)) return res.status(403).json({ message: "Origin not allowed" });
 
   const path = String(req.query.path || "");
-  if (!/^(auth|rest|storage)\/v1(?:\/|$)/.test(path)) return res.status(404).json({ message: "Unsupported Supabase path" });
+  // The production client uses this same Supabase base URL for Auth, data,
+  // media and Edge Functions. Blocking `functions/v1` here makes login work
+  // while every push-function invocation silently ends at the proxy.
+  if (!/^(auth|rest|storage|functions)\/v1(?:\/|$)/.test(path)) return res.status(404).json({ message: "Unsupported Supabase path" });
   const query = new URLSearchParams();
   for (const [key, value] of Object.entries(req.query)) {
     if (key === "path") continue;

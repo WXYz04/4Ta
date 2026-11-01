@@ -26,7 +26,8 @@ export default async function handler(request, response) {
   if (origin && !ALLOWED_ORIGINS.has(origin)) return response.status(403).json({ message: "Origin not allowed" });
 
   const rawPath = Array.isArray(request.query.path) ? request.query.path.join("/") : String(request.query.path || "");
-  if (!/^(auth|rest|storage)\/v1(?:\/|$)/.test(rawPath)) return response.status(404).json({ message: "Unsupported Supabase path" });
+  // Keep Edge Functions on the same domain-restricted proxy as Auth and data.
+  if (!/^(auth|rest|storage|functions)\/v1(?:\/|$)/.test(rawPath)) return response.status(404).json({ message: "Unsupported Supabase path" });
 
   const query = new URLSearchParams();
   Object.entries(request.query).forEach(([key, value]) => {
