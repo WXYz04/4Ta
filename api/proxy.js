@@ -2,6 +2,19 @@ const ORIGIN = "https://qlixoxvwishgsybjwetg.supabase.co";
 const KEY = "sb_publishable_x5p1DZPP0iGqi0220f7qSw_Jmu2gl3Y";
 const ALLOWED = new Set(["https://4ta.space", "https://www.4ta.space"]);
 
+export const config = { api: { bodyParser: false } };
+
+async function readRawBody(req) {
+  if (!req?.[Symbol.asyncIterator]) {
+    if (Buffer.isBuffer(req?.body)) return req.body;
+    if (typeof req?.body === "string") return Buffer.from(req.body);
+    return Buffer.from(JSON.stringify(req?.body ?? {}));
+  }
+  const chunks = [];
+  for await (const chunk of req) chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+  return Buffer.concat(chunks);
+}
+
 export default async function handler(req, res) {
   const origin = req.headers.origin || "";
   if (ALLOWED.has(origin)) res.setHeader("Access-Control-Allow-Origin", origin);
@@ -32,10 +45,11 @@ export default async function handler(req, res) {
   for (const name of ["accept-profile", "content-profile", "prefer", "range", "x-upsert"]) {
     if (req.headers[name]) headers[name] = req.headers[name];
   }
+  const rawBody = req.method === "GET" || req.method === "HEAD" ? undefined : await readRawBody(req);
   const upstream = await fetch(`${ORIGIN}/${path}${query.size ? `?${query}` : ""}`, {
     method: req.method,
     headers,
-    body: req.method === "GET" ? undefined : (typeof req.body === "string" || Buffer.isBuffer(req.body) ? req.body : JSON.stringify(req.body ?? {}))
+    body: rawBody?.length ? rawBody : undefined,
   });
   const body = Buffer.from(await upstream.arrayBuffer());
   const type = upstream.headers.get("content-type");

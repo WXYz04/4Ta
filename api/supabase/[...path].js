@@ -5,6 +5,19 @@ const ALLOWED_ORIGINS = new Set([
   "https://www.4ta.space",
 ]);
 
+export const config = { api: { bodyParser: false } };
+
+async function readRawBody(request) {
+  if (!request?.[Symbol.asyncIterator]) {
+    if (Buffer.isBuffer(request?.body)) return request.body;
+    if (typeof request?.body === "string") return Buffer.from(request.body);
+    return Buffer.from(JSON.stringify(request?.body ?? {}));
+  }
+  const chunks = [];
+  for await (const chunk of request) chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+  return Buffer.concat(chunks);
+}
+
 function applyCors(request, response) {
   const origin = request.headers.origin || "";
   if (ALLOWED_ORIGINS.has(origin)) response.setHeader("Access-Control-Allow-Origin", origin);
@@ -45,14 +58,11 @@ export default async function handler(request, response) {
     if (request.headers[name]) headers[name] = request.headers[name];
   }
 
+  const rawBody = request.method === "GET" || request.method === "HEAD" ? undefined : await readRawBody(request);
   const upstream = await fetch(target, {
     method: request.method,
     headers,
-    body: request.method === "GET" || request.method === "HEAD"
-      ? undefined
-      : typeof request.body === "string" || Buffer.isBuffer(request.body)
-        ? request.body
-        : JSON.stringify(request.body ?? {}),
+    body: rawBody?.length ? rawBody : undefined,
   });
   const body = Buffer.from(await upstream.arrayBuffer());
   const contentType = upstream.headers.get("content-type");
