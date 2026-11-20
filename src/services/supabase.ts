@@ -422,15 +422,22 @@ export async function restoreCloudChatMessages() {
   if (!session) return 0;
   const activeTaId = getActiveTaId();
   const activeRecordKey = taMessageKey(activeTaId);
-  const { data, error } = await supabase
+  const { data: records, error } = await supabase
     .from("app_records")
-    .select("payload")
+    .select("record_key,payload")
     .eq("user_id", session.user.id)
     .eq("record_type", "local_storage")
-    .eq("record_key", activeRecordKey)
-    .maybeSingle();
+    .in("record_key", [activeRecordKey, "4ta:ta-profiles"]);
   if (error) throw new Error(`聊天恢复失败：${error.message}`);
-  let cloudValue = (data?.payload as { value?: unknown } | undefined)?.value;
+  const recordByKey = new Map((records || []).map((record) => [record.record_key, record.payload]));
+  const cloudProfilesValue = (recordByKey.get("4ta:ta-profiles") as { value?: unknown } | undefined)?.value;
+  if (typeof cloudProfilesValue === "string") {
+    try {
+      const cloudProfiles = JSON.parse(cloudProfilesValue);
+      if (Array.isArray(cloudProfiles)) saveTaProfiles(mergeProfileLists(readTaProfiles(), cloudProfiles));
+    } catch { /* Keep readable local profiles. */ }
+  }
+  let cloudValue = (recordByKey.get(activeRecordKey) as { value?: unknown } | undefined)?.value;
   if (typeof cloudValue !== "string" && activeTaId === "main") {
     const { data: legacyData } = await supabase
       .from("app_records")
