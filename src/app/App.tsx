@@ -23,6 +23,7 @@ import { TravelAppPage, TravelTicketPage } from "../features/meetings/TravelPage
 import { HeartHouseCastPage, HeartHouseDetailPage, HeartHouseGamePage, HeartHouseLoadingPage, SpacesPage } from "../features/spaces/SpacePages";
 import { ConquestCastPage, ConquestPlayPage, ConquestRoleSetupPage } from "../features/spaces/ConquestPages";
 import { TaPhonePage } from "../features/phone/TaPhonePage";
+import { WeatherPage } from "../features/weather/WeatherPage";
 
 function LegacyAccountOnboardingGuard({ children }: { children: React.ReactNode }) {
   const account = (localStorage.getItem("4ta:account-name") || "").trim().toLocaleLowerCase();
@@ -54,6 +55,7 @@ export function App() {
       <Route path="/meeting/history" element={<MeetingHistoryPage />} />
       <Route path="/meeting/history/:sessionId" element={<MeetingHistoryDetailPage />} />
       <Route path="/travel" element={<TravelAppPage />} />
+      <Route path="/weather" element={<WeatherPage />} />
       <Route path="/travel/ticket/:ticketId" element={<TravelTicketPage />} />
       <Route path="/spaces" element={<SpacesPage />} />
       <Route path="/spaces/heart-house" element={<HeartHouseDetailPage />} />

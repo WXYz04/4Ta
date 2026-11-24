@@ -1,4 +1,4 @@
-const CACHE_NAME = "4ta-shell-v32";
+const CACHE_NAME = "4ta-shell-v33";
 const APP_SHELL = [
   "./",
   "./manifest.webmanifest",
@@ -74,6 +74,9 @@ self.addEventListener("push", (event) => {
     data: {
       url: payload.url || "./#/chat",
       notificationId: payload.notificationId || "",
+      taId: payload.taId || "",
+      body: options.body,
+      sentAt: payload.sentAt || new Date().toISOString(),
     },
   };
   event.waitUntil(self.registration.showNotification(title, options));
@@ -83,14 +86,18 @@ self.addEventListener("notificationclick", (event) => {
   event.notification.close();
   const targetUrl = new URL(event.notification.data?.url || "./#/chat", self.location.href).href;
   event.waitUntil(
-    self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((clients) => {
+    self.clients.matchAll({ type: "window", includeUncontrolled: true }).then(async (clients) => {
+      const message = { type: "4ta-push-click", ...event.notification.data };
       for (const client of clients) {
         if ("focus" in client) {
-          client.navigate(targetUrl);
+          client.postMessage(message);
+          await client.navigate(targetUrl);
           return client.focus();
         }
       }
-      return self.clients.openWindow(targetUrl);
+      const opened = await self.clients.openWindow(targetUrl);
+      opened?.postMessage(message);
+      return opened;
     }),
   );
 });
